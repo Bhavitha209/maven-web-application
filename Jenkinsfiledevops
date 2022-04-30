@@ -1,3 +1,29 @@
+def sendSlackNotifications(String buildStatus = 'STARTED') {
+  buildStatus =  buildStatus ?: 'SUCCESS'
+
+  // Default values
+  def colorName = 'RED'
+  def colorCode = '#FF0000'
+  def subject = "${buildStatus}: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'"
+  def summary = "${subject} (${env.BUILD_URL})"
+
+  // Override default values based on build status
+  if (buildStatus == 'STARTED') {
+    color = 'YELLOW'
+    colorCode = '#FFFF00'
+  } else if (buildStatus == 'SUCCESS') {
+    color = 'GREEN'
+    colorCode = '#00FF00'
+  } else {
+    color = 'RED'
+    colorCode = '#FF0000'
+  }
+
+  // Send notifications
+  slackSend (color: colorCode, message: summary)
+}
+
+
 node{
     echo "Job Name is:  ${env.JOB_NAME}"
     echo "Node Name is: ${env.NODE_NAME}"
@@ -5,7 +31,10 @@ node{
     properties([buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '5', daysToKeepStr: '', numToKeepStr: '5')), [$class: 'JobLocalConfiguration', changeReasonComment: ''], pipelineTriggers([pollSCM('* * * * *')])])
   
   def mavenHome = tool name: 'maven3.8.5' 
+try{
+}//test closing
 
+}//node closing
 //Get the code from Github Repo
 stage('CheckoutCode'){
 git branch: 'development', credentialsId: '33f0a274-7b60-4d55-a160-8a798fabd978', url: 'https://github.com/Bhavitha209/maven-web-application.git'
@@ -32,9 +61,15 @@ stage('DeployApplication into Tomcat Server'){
 sshagent(['53d860d0-cf81-45b5-82f6-4acca67b1d08']) {
 sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@3.111.170.95:/opt/apache-tomcat-9.0.62/webapps/"
 }
-    
-}
-*/
+ }   
 
+*/
+}//Try closing
+catch(e){
+currentBuild.result = "FAILED"
 }
+finally{
+sendSlackNotifications(currentBuilt.result)
+}
+}//Node closing
 
